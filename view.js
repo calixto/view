@@ -161,6 +161,7 @@ $.fn.assign = function(obj, fnDebug) {
             $this.findMeToo('[data-html-' + i + ']').html(obj[i]);
             $this.findMeToo('[data-val-' + i + ']').val(obj[i]);
             $this.findMeToo('[data-attr-' + i + ']').dataAttr(i, obj[i]);
+            $this.findMeToo('[data-prop-' + i + ']').dataProp(i, obj[i]);
         }
     }
     return $this;
