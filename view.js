@@ -23,7 +23,7 @@
 $.fn.view = function(method,params, callbackDebug){
     switch(method){
         case 'assign':
-            $(this).assign(params, callbackDebug);
+            return $(this).assign(params, callbackDebug);
             break;
         case 'extract':
             return $(this).extract(params, callbackDebug);
@@ -34,7 +34,7 @@ $.fn.view = function(method,params, callbackDebug){
                 'callbackItem':false,
                 'cleanBeforeInit':false
             },params);
-            $(this).iterate(options.template, options.collection, options.callbackItem, options.cleanBeforeInit);
+            return $(this).iterate(options.template, options.collection, options.callbackItem, options.cleanBeforeInit);
             break;
         case 'extractCollection':
             var options = $.extend({
@@ -58,6 +58,29 @@ $.fn.findMeToo = function(selector){
         return $(this).find(selector);
     }
 };
+/**
+ * Method used to set css
+ * @param {String} property
+ * @param {String} value
+ * @returns {jQuery}
+ */
+$.fn.viewDataCss = function(property, value) {
+    var $this = $(this);
+    if (!$(this)[0])
+        return $(this);
+    $.each($(this), function() {
+        var attr = $this.attr('data-css-' + property);
+        if (!attr) {
+            console.error(this, 'not found value of: ' + 'data-css-' + attr);
+            return true;
+        }
+        var attrs = attr.split('|');
+        for (var j in attrs) {
+            $(this).css(attrs[j], value);
+        }
+    });
+    return $(this);
+};
 
 /**
  * Method used to set property
@@ -65,7 +88,7 @@ $.fn.findMeToo = function(selector){
  * @param string value
  * @returns void
  */
-$.fn.dataProp = function(property, valor) {
+$.fn.viewDataProp = function(property, valor) {
     var $this = $(this);
     if (!$this[0])
         return;
@@ -94,7 +117,7 @@ $.fn.dataProp = function(property, valor) {
  * @param string value
  * @returns void
  */
-$.fn.dataAttr = function(property, valor) {
+$.fn.viewDataAttr = function(property, valor) {
     var $this = $(this);
     if (!$this[0])
         return;
@@ -116,7 +139,8 @@ $.fn.dataAttr = function(property, valor) {
  * <element data-html-{index} to execute jquery "html" method in element
  * <element data-attr-{index}="{new-attribute-name}" adds the element of the index value in the attribute-related
  * <element data-attr-{index}="{new-attribute-name|[callback-for-value-in]}" adds the element of the index value in the attribute related, with callback for value
- * <element data-prop-{index}="{property-name|callback-for-value-in}" set element property 
+ * <element data-prop-{index}="{property-name}" set element property
+ * <element data-prop-{index}="{property-name|callback-for-value-in}" set element property, with callback for value
  *      Samples:
  *      <script>
  *      var data = {'ST_LINK_PAGINA':'https://jquery.org/', 'DS_TEXTO':'Página da jQuery', 'ID_PESSOA':'335'};
@@ -139,29 +163,33 @@ $.fn.assign = function(obj, fnDebug) {
     var $this = $(this);
     fnDebug = fnDebug || function() {
     };
-    if (!$this.size())
+    if (!$this.length)
         return;
     if (fnDebug) {
         for (var i in obj) {
             var $html = $this.findMeToo('[data-html-' + i + ']');
             $html.html(obj[i]);
             fnDebug($html, obj[i], 'html', i);
+            var $css = $this.findMeToo('[data-css-' + i + ']');
+            $css.viewDataCss(i, obj[i]);
+            fnDebug($css, obj[i], 'css', i);
             var $val = $this.findMeToo('[data-val-' + i + ']');
             $val.val(obj[i]);
             fnDebug($val, obj[i], 'val', i);
             var $attr = $this.findMeToo('[data-attr-' + i + ']');
-            $attr.dataAttr(i, obj[i]);
+            $attr.viewDataAttr(i, obj[i]);
             fnDebug($attr, obj[i], 'attr', i);
             var $prop = $this.findMeToo('[data-prop-' + i + ']');
-            $prop.dataProp(i, obj[i]);
+            $prop.viewDataProp(i, obj[i]);
             fnDebug($prop, obj[i], 'prop', i);
         }
     } else {
         for (var i in obj) {
             $this.findMeToo('[data-html-' + i + ']').html(obj[i]);
             $this.findMeToo('[data-val-' + i + ']').val(obj[i]);
-            $this.findMeToo('[data-attr-' + i + ']').dataAttr(i, obj[i]);
-            $this.findMeToo('[data-prop-' + i + ']').dataProp(i, obj[i]);
+            $this.findMeToo('[data-attr-' + i + ']').viewDataAttr(i, obj[i]);
+            $this.findMeToo('[data-pro-' + i + ']').viewDataProp(i, obj[i]);
+            $this.findMeToo('[data-css-' + i + ']').viewDataCss(i, obj[i]);
         }
     }
     return $this;
@@ -194,17 +222,17 @@ $.fn.extract = function(objeto, fn) {
         return objeto;
     if (fn) {
         for (var i in objeto) {
-            var attr = $this.find('[data-' + i + ']').attr('data-' + i);
-            var val = $this.find('[data-val-' + i + ']').val();
-            var html = $this.find('[data-html-' + i + ']').html();
+            var attr = $this.findMeToo('[data-' + i + ']').attr('data-' + i);
+            var val = $this.findMeToo('[data-val-' + i + ']').val();
+            var html = $this.findMeToo('[data-html-' + i + ']').html();
             objeto[i] = attr ? attr : (val ? val : (html ? html : null));
             fn(i, objeto[i], attr, val, html);
         }
     } else {
         for (var i in objeto) {
-            var attr = $this.find('[data-' + i + ']').attr('data-' + i);
-            var val = $this.find('[data-val-' + i + ']').val();
-            var html = $this.find('[data-html-' + i + ']').html();
+            var attr = $this.findMeToo('[data-' + i + ']').attr('data-' + i);
+            var val = $this.findMeToo('[data-val-' + i + ']').val();
+            var html = $this.findMeToo('[data-html-' + i + ']').html();
             objeto[i] = attr ? attr : (val ? val : (html ? html : null));
         }
     }
