@@ -25,6 +25,9 @@ $.fn.view = function(method,params, callbackDebug){
         case 'assign':
             return $(this).assign(params, callbackDebug);
             break;
+        case 'unreplace':
+            return $(this).viewDataUnreplace();
+            break;
         case 'extract':
             return $(this).extract(params, callbackDebug);
         case 'iterate':
@@ -68,16 +71,16 @@ $.fn.viewDataCss = function(property, value) {
     var $this = $(this);
     if (!$(this)[0])
         return $(this);
-    $.each($(this), function() {
+    $.each($this, function() {
         var attr = $this.attr('data-css-' + property);
-        if (!attr) {
-            console.error(this, 'not found value of: ' + 'data-css-' + attr);
+        if(!attr){
+            console.log($this, 'value of ' + 'data-css-' + property + ' is not found.');
             return true;
         }
         var attrs = attr.split('|');
-        for (var j in attrs) {
-            $(this).css(attrs[j], value);
-        }
+        $.each(attrs,function(j,v){
+            $this.css(attrs[j], value);
+        });
     });
     return $(this);
 };
@@ -95,19 +98,19 @@ $.fn.viewDataProp = function(property, valor) {
     $.each($this, function() {
         var attr = $this.attr('data-prop-' + property);
         if(!attr){
-            console.warning($this, 'not found value of: ' + 'data-prop-' + property);
+            console.log($this, 'not found value of: ' + 'data-prop-' + property);
             return true;
         }
         var attrs = attr.split('|');
         if(attrs.length < 2){
-            console.warning($this, 'not found value of: ' + 'data-prop-' + property + ' expected something like "checked|functionValidateCheck"');
+            console.log($this, 'not found value of: ' + 'data-prop-' + property + ' expected something like "checked|functionValidateCheck"');
             return true;
         };
         try{
             var fn = eval(attrs[1]);
             $this.prop(attrs[0],fn(valor, $this));
         }catch (e){
-            console.warning($this, 'it was not possible to apply in ' + 'data-prop-' + property + ' property ' + attrs[0] + ' or function ' + attrs[1] + ' not exists.');
+            console.log($this, 'it was not possible to apply in ' + 'data-prop-' + property + ' property ' + attrs[0] + ' or function ' + attrs[1] + ' not exists.');
         }
     });
 };
@@ -124,13 +127,70 @@ $.fn.viewDataAttr = function(property, valor) {
     $.each($this, function() {
         var attr = $this.attr('data-attr-' + property);
         if(!attr){
-            console.warning($this, 'value of ' + 'data-attr-' + property + ' is not found.');
+            console.log($this, 'value of ' + 'data-attr-' + property + ' is not found.');
             return true;
         }
         var attrs = attr.split('|');
-        for (var j in attrs) {
+        $.each(attrs,function(j,v){
             $this.attr(attrs[j], valor);
+        });
+    });
+};
+$.fn.viewDataUnreplace = function(){
+    $.each($(this),function(){
+        var $this = $(this);
+        $.each($this.findMeToo('[data-view-replaced="true"]'),function(){
+            $el = $(this);
+            $.each($el.data('data-view-attrs-replaced'),function(attribute, value){
+                $el.attr(attribute, value);
+            });
+        });
+    });
+    return $(this);
+};
+$.fn.viewStoreBeforeReplace = function () {
+    $.each($(this),function(){
+        var $this = $(this);
+        if(!$this.attr('data-view-replaced')){
+            var replace = {};
+            var reg = /^data-replace/;
+            $.each($this,function(){
+                $.each(this.attributes,function(){
+                    var attribute = this;
+                    if(reg.test(attribute.name)){
+                        $.each($this.attr(attribute.name).split('|'), function(i,configured){
+                            replace[configured] = $this.attr(configured);
+                        });
+                    }
+                });
+            });
+            $this.data('data-view-attrs-replaced',replace);
+            $this.attr('data-view-replaced','true');
         }
+        
+    });
+};
+/**
+ * method to replace of property
+ * @param string property
+ * @param string value
+ * @returns void
+ */
+$.fn.viewDataReplace = function(property, valor) {
+    var $this = $(this);
+    if (!$this[0])
+        return;
+    $.each($this, function() {
+        var $el = $(this);
+        var attr = $el.attr('data-replace-' + property);
+        if(!attr){
+            console.log($el, 'value of ' + 'data-attr-' + property + ' is not found.');
+            return true;
+        }
+        var attrs = attr.split('|');
+        $.each(attrs,function(j,attr){
+            $el.attr(attr, $el.attr(attr).replaceAll('{' + property + '}', valor));
+        });
     });
 };
 /**
@@ -170,9 +230,6 @@ $.fn.assign = function(obj, fnDebug) {
             var $html = $this.findMeToo('[data-html-' + i + ']');
             $html.html(obj[i]);
             fnDebug($html, obj[i], 'html', i);
-            var $css = $this.findMeToo('[data-css-' + i + ']');
-            $css.viewDataCss(i, obj[i]);
-            fnDebug($css, obj[i], 'css', i);
             var $val = $this.findMeToo('[data-val-' + i + ']');
             $val.val(obj[i]);
             fnDebug($val, obj[i], 'val', i);
@@ -182,14 +239,23 @@ $.fn.assign = function(obj, fnDebug) {
             var $prop = $this.findMeToo('[data-prop-' + i + ']');
             $prop.viewDataProp(i, obj[i]);
             fnDebug($prop, obj[i], 'prop', i);
+            var $css = $this.findMeToo('[data-css-' + i + ']');
+            $css.viewDataCss(i, obj[i]);
+            fnDebug($css, obj[i], 'css', i);
+            var $replace = $this.findMeToo('[data-replace-' + i + ']');
+            $replace.viewStoreBeforeReplace();
+            $replace.viewDataReplace(i, obj[i]);
+            fnDebug($replace, obj[i], 'replace', i);
         }
     } else {
         for (var i in obj) {
             $this.findMeToo('[data-html-' + i + ']').html(obj[i]);
             $this.findMeToo('[data-val-' + i + ']').val(obj[i]);
             $this.findMeToo('[data-attr-' + i + ']').viewDataAttr(i, obj[i]);
-            $this.findMeToo('[data-pro-' + i + ']').viewDataProp(i, obj[i]);
+            $this.findMeToo('[data-prop-' + i + ']').viewDataProp(i, obj[i]);
             $this.findMeToo('[data-css-' + i + ']').viewDataCss(i, obj[i]);
+            $this.findMeToo('[data-replace-' + i + ']').viewStoreBeforeReplace();
+            $this.findMeToo('[data-replace-' + i + ']').viewDataReplace(i, obj[i]);
         }
     }
     return $this;
@@ -247,20 +313,32 @@ $.fn.extract = function(objeto, fn) {
  * @returns jQuery
  */
 $.fn.iterate = function($tpl, collection, callbackItem, cleanBeforeInit, callbackDebug) {
+    var $this = this;
     cleanBeforeInit = cleanBeforeInit || false;
     if (cleanBeforeInit) {
-        $(this).html('');
+        $this.html('');
     }
     if (callbackItem) {
-        for (i in collection) {
+        $.each(collection,function(i,v){
             var $clone = $tpl.clone(true);
-            $(this).append($clone.assign(collection[i]), callbackDebug)
+            $this.append($clone.assign(collection[i]), callbackDebug)
             callbackItem($clone, collection[i]);
-        }
+        });
     } else {
-        for (i in collection) {
-            $(this).append($tpl.clone(true).assign(collection[i]))
-        }
+        $.each(collection,function(i,v){
+            $this.append($tpl.clone(true).assign(collection[i]))
+        });
     }
-    return $(this);
+    return $this;
+};
+
+/**
+ * Replace all occurrences of a string
+ * @param string search
+ * @param string replacement
+ * @returns {String}
+ */
+String.prototype.replaceAll = function(search, replacement) {
+    var target = this;
+    return target.replace(new RegExp(search, 'g'), replacement);
 };
