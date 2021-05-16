@@ -203,6 +203,7 @@
      * <element data-attr-{index}="{new-attribute-name|[callback-for-value-in]}" adds the element of the index value in the attribute related, with callback for value
      * <element data-prop-{index}="{property-name}" set element property
      * <element data-prop-{index}="{property-name|callback-for-value-in}" set element property, with callback for value
+     * <element data-replace-{index}="{attr-name}" replace value of index on attribute element property, with callback for value
      *      Samples:
      *      <script>
      *      var data = {'ST_LINK_PAGINA':'https://jquery.org/', 'DS_TEXTO':'Página da jQuery', 'ID_PESSOA':'335'};
