@@ -211,6 +211,12 @@
      *      <div class='target'>
      *          <a data-attr-ST_LINK_PAGINA="href" data-html-DS_TEXTO></a>
      *          <input type="text" data-val-ID_PESSOA />
+     *          <input type="checkbox" 
+     *                 data-replace-ST_LINK_PAGINA="title" 
+     *                 data-replace-ID_PESSOA="name|title" 
+     *                 name="mycheck{ID_PESSOA}" 
+     *                 title="This is my check: {ID_PESSOA} linked on {ST_LINK_PAGINA}" 
+     *                 />
      *      </div>
      *      will be executed on <a> tag:
      *          $(this).find('[data-attr-ST_LINK_PAGINA="href"]').attr('href',ST_LINK_PAGINA);
