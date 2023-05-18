@@ -35,10 +35,12 @@
                 var options = $.extend({
                     'template': $(),
                     'collection': [],
+                    'callbackBeforeItem': false,
                     'callbackItem': false,
-                    'cleanBeforeInit': false
+                    'cleanBeforeInit': false,
+                    'methodInsert': 'append'
                 }, params);
-                return $(this).iterate(options.template, options.collection, options.callbackItem, options.cleanBeforeInit);
+                return $(this).iterate(options.template, options.collection, options.callbackBeforeItem, options.callbackItem, options.cleanBeforeInit, options.methodInsert);
                 break;
             case 'extractCollection':
                 var options = $.extend({
@@ -63,6 +65,44 @@
         }
     };
     /**
+     * Method used to set innerHtml
+     * @param {String} property
+     * @param {String} value
+     * @returns {jQuery}
+     */
+    $.fn.viewDataHtml = function (property, value) {
+        var $this = $(this);
+        if (!$(this)[0])
+            return $(this);
+        $.each($this, function () {
+            if($this.attr('data-view-debug')){
+                console.log('css:', property, value, $this)
+            }
+            $this.html(value);
+        });
+        return $(this);
+    };
+    
+    /**
+     * Method used to set innerHtml
+     * @param {String} property
+     * @param {String} value
+     * @returns {jQuery}
+     */
+    $.fn.viewDataVal = function (property, value) {
+        var $this = $(this);
+        if (!$(this)[0])
+            return $(this);
+        $.each($this, function () {
+            if($this.attr('data-view-debug')){
+                console.log('val:', property, value, $this)
+            }
+            $this.val(value);
+        });
+        return $(this);
+    };
+    
+    /**
      * Method used to set css
      * @param {String} property
      * @param {String} value
@@ -78,6 +118,9 @@
                 console.log($this, 'value of ' + 'data-css-' + property + ' is not found.');
                 return true;
             }
+            if($this.attr('data-view-debug')){
+                console.log('css:', property, value, $this)
+            }
             var attrs = attr.split('|');
             $.each(attrs, function (j, v) {
                 $this.css(attrs[j], value);
@@ -92,7 +135,7 @@
      * @param string value
      * @returns void
      */
-    $.fn.viewDataProp = function (property, valor) {
+    $.fn.viewDataProp = function (property, value) {
         var $this = $(this);
         if (!$this[0])
             return;
@@ -108,9 +151,12 @@
                 return true;
             }
             ;
+            if($this.attr('data-view-debug')){
+                console.log('prop:', property, value, $this)
+            }
             try {
                 var fn = eval(attrs[1]);
-                $this.prop(attrs[0], fn(valor, $this));
+                $this.prop(attrs[0], fn(value, $this));
             } catch (e) {
                 console.log($this, 'it was not possible to apply in ' + 'data-prop-' + property + ' property ' + attrs[0] + ' or function ' + attrs[1] + ' not exists.');
             }
@@ -122,7 +168,7 @@
      * @param string value
      * @returns void
      */
-    $.fn.viewDataAttr = function (property, valor) {
+    $.fn.viewDataAttr = function (property, value) {
         var $this = $(this);
         if (!$this[0])
             return;
@@ -132,10 +178,51 @@
                 console.log($this, 'value of ' + 'data-attr-' + property + ' is not found.');
                 return true;
             }
+            if($this.attr('data-view-debug')){
+                console.log('attr:', property, value, $this)
+            }
             var attrs = attr.split('|');
             $.each(attrs, function (j, v) {
-                $this.attr(attrs[j], valor);
+                $this.attr(attrs[j], value);
             });
+        });
+    };
+    /**
+     * method to create property
+     * @param string property
+     * @param string value
+     * @param string metodo 'html' or 'val'
+     * @returns void
+     */
+    $.fn.viewDataTranslate = function (property, valor, metodo) {
+        var $this = $(this);
+        if (!$this[0])
+            return;
+        $.each($this, function () {
+            var attr = $this.attr('data-translate-' + metodo + '-' + property);
+            if (!attr) {
+                console.log($this, 'value of ' + 'data-translate-' + property + ' is not found.');
+                return true;
+            }
+            try{
+                if($this.attr('data-view-debug')){
+                    console.log('translate-' + metodo + ':', property, valor, $this)
+                }
+                $descriptor = $(attr);
+                if($descriptor.is('select')){
+                    $this[metodo](
+                        $descriptor.find('option').filter(function(){
+                            return $(this).val() == valor;
+                        }).text()
+                    )
+                }
+            }catch (e) {
+                try{
+                    translator = eval(attr)
+                }catch(exc){
+                    console.log('Erro ao compilar translate: ' + attr + ': ' + exc)
+                }
+            }
         });
     };
     $.fn.viewDataUnreplace = function () {
@@ -186,8 +273,11 @@
             var $el = $(this);
             var attr = $el.attr('data-replace-' + property);
             if (!attr) {
-                console.log($el, 'value of ' + 'data-attr-' + property + ' is not found.');
+                console.log($el, 'value of ' + 'data-replace-' + property + ' is not found.');
                 return true;
+            }
+            if($this.attr('data-view-debug')){
+                console.log('attr:', $this, property, valor)
             }
             var attrs = attr.split('|');
             $.each(attrs, function (j, attr) {
@@ -203,7 +293,6 @@
      * <element data-attr-{index}="{new-attribute-name|[callback-for-value-in]}" adds the element of the index value in the attribute related, with callback for value
      * <element data-prop-{index}="{property-name}" set element property
      * <element data-prop-{index}="{property-name|callback-for-value-in}" set element property, with callback for value
-     * <element data-replace-{index}="{attr-name}" replace value of index on attribute element property, with callback for value
      *      Samples:
      *      <script>
      *      var data = {'ST_LINK_PAGINA':'https://jquery.org/', 'DS_TEXTO':'Página da jQuery', 'ID_PESSOA':'335'};
@@ -212,12 +301,6 @@
      *      <div class='target'>
      *          <a data-attr-ST_LINK_PAGINA="href" data-html-DS_TEXTO></a>
      *          <input type="text" data-val-ID_PESSOA />
-     *          <input type="checkbox" 
-     *                 data-replace-ST_LINK_PAGINA="title" 
-     *                 data-replace-ID_PESSOA="name|title" 
-     *                 name="mycheck{ID_PESSOA}" 
-     *                 title="This is my check: {ID_PESSOA} linked on {ST_LINK_PAGINA}" 
-     *                 />
      *      </div>
      *      will be executed on <a> tag:
      *          $(this).find('[data-attr-ST_LINK_PAGINA="href"]').attr('href',ST_LINK_PAGINA);
@@ -234,13 +317,19 @@
         };
         if (!$this.length)
             return;
+        if ($this.attr('data-view-debug') == 'object'){
+            console.log($this, obj)
+        }
         if (fnDebug) {
             for (var i in obj) {
+                if ($this.attr('data-view-debug') == 'object'){
+                    console.log(i)
+                }
                 var $html = $this.findMeToo('[data-html-' + i + ']');
-                $html.html(obj[i]);
+                $html.viewDataHtml(i, obj[i]);
                 fnDebug($html, obj[i], 'html', i);
                 var $val = $this.findMeToo('[data-val-' + i + ']');
-                $val.val(obj[i]);
+                $val.viewDataVal(i, obj[i]);
                 fnDebug($val, obj[i], 'val', i);
                 var $attr = $this.findMeToo('[data-attr-' + i + ']');
                 $attr.viewDataAttr(i, obj[i]);
@@ -251,6 +340,12 @@
                 var $css = $this.findMeToo('[data-css-' + i + ']');
                 $css.viewDataCss(i, obj[i]);
                 fnDebug($css, obj[i], 'css', i);
+                var $attr = $this.findMeToo('[data-translate-val-' + i + ']');
+                $attr.viewDataTranslate(i, obj[i],'val');
+                fnDebug($attr, obj[i], 'translate', i);
+                var $attr = $this.findMeToo('[data-translate-html-' + i + ']');
+                $attr.viewDataTranslate(i, obj[i],'html');
+                fnDebug($attr, obj[i], 'translate', i);
                 var $replace = $this.findMeToo('[data-replace-' + i + ']');
                 $replace.viewStoreBeforeReplace();
                 $replace.viewDataReplace(i, obj[i]);
@@ -258,11 +353,13 @@
             }
         } else {
             for (var i in obj) {
-                $this.findMeToo('[data-html-' + i + ']').html(obj[i]);
-                $this.findMeToo('[data-val-' + i + ']').val(obj[i]);
+                $this.findMeToo('[data-html-' + i + ']').viewDataHtml(i, obj[i]);
+                $this.findMeToo('[data-val-' + i + ']').viewDataVal(i, obj[i]);
                 $this.findMeToo('[data-attr-' + i + ']').viewDataAttr(i, obj[i]);
                 $this.findMeToo('[data-prop-' + i + ']').viewDataProp(i, obj[i]);
                 $this.findMeToo('[data-css-' + i + ']').viewDataCss(i, obj[i]);
+                $this.findMeToo('[data-translate-val-' + i + ']').viewDataTranslate(i, obj[i], 'val');
+                $this.findMeToo('[data-translate-html-' + i + ']').viewDataTranslate(i, obj[i], 'html');
                 $this.findMeToo('[data-replace-' + i + ']').viewStoreBeforeReplace();
                 $this.findMeToo('[data-replace-' + i + ']').viewDataReplace(i, obj[i]);
             }
@@ -319,23 +416,28 @@
      * @param Array collection of json for assign in template
      * @param function for callback in item loop
      * @param boolean to clean before init operation
+     * @param string jquery method for insert item
      * @returns jQuery
      */
-    $.fn.iterate = function ($tpl, collection, callbackItem, cleanBeforeInit, callbackDebug) {
+    $.fn.iterate = function ($tpl, collection, callbackBeforeItem, callbackItem, cleanBeforeInit, methodInsert, callbackDebug) {
         var $this = this;
         cleanBeforeInit = cleanBeforeInit || false;
+        methodInsert = methodInsert || 'append';
         if (cleanBeforeInit) {
             $this.html('');
         }
-        if (callbackItem) {
+        if(!callbackBeforeItem && !callbackItem){
+            $.each(collection, function (i, v) {
+                $this[methodInsert]($tpl.clone(true).assign(collection[i]))
+            });
+        }else{
+            callbackItem = callbackItem ?  callbackItem : () => {};
+            callbackBeforeItem = callbackBeforeItem ?  callbackBeforeItem : () => {};
             $.each(collection, function (i, v) {
                 var $clone = $tpl.clone(true);
-                $this.append($clone.assign(collection[i]), callbackDebug)
+                callbackBeforeItem($clone, collection[i]);
+                $this[methodInsert]($clone.assign(collection[i]), callbackDebug)
                 callbackItem($clone, collection[i]);
-            });
-        } else {
-            $.each(collection, function (i, v) {
-                $this.append($tpl.clone(true).assign(collection[i]))
             });
         }
         return $this;
