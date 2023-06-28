@@ -215,13 +215,13 @@
                             return $(this).val() == valor;
                         }).text()
                     )
-                }
-            }catch (e) {
-                try{
+                }else{
                     translator = eval(attr)
-                }catch(exc){
-                    console.log('Erro ao compilar translate: ' + attr + ': ' + exc)
+                    translated = translator(valor)
+                    $this[metodo](translated)
                 }
+            }catch (exc) {
+                console.log($this, 'Erro ao compilar translate: ' + attr + ': ' + exc)
             }
         });
     };
